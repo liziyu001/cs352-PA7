@@ -50,6 +50,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+#include <limits>
 #include <unordered_set>
 #include <iostream>
 #include <algorithm>
@@ -115,10 +116,11 @@ namespace {
 		}
 			
 		LiveInterval *dequeue() override {
-		  if (Queue.empty())
+		  if (stack.empty()) {
 			  return nullptr;
-		  LiveInterval *LI = Queue.top();
-		  Queue.pop();
+		  }
+		  LiveInterval *LI = stack.top();
+		  stack.pop();
 		  return LI;
 		}
 			
@@ -335,6 +337,16 @@ void RAUSCC::initGraph() {
 	// PA7: Implement
 	for (unsigned i = 0, e = MRI->getNumVirtRegs(); i != e; ++i) {
 		// reg ID
+		unsigned Reg = TargetRegisterInfo::index2VirtReg(i);
+		// if is not a DEBUG register
+		if (MRI->reg_nodbg_empty(Reg))
+			continue;
+		// get the respective LiveInterval
+		LiveInterval *VirtReg = &LIS->getInterval(Reg);
+		interferenceGraph[VirtReg] = std::unordered_set<LiveInterval *>();
+	}
+	for (unsigned i = 0, e = MRI->getNumVirtRegs(); i != e; ++i) {
+		// reg ID
 		unsigned Reg1 = TargetRegisterInfo::index2VirtReg(i);
 		// if is not a DEBUG register
 		if (MRI->reg_nodbg_empty(Reg1))
@@ -348,7 +360,7 @@ void RAUSCC::initGraph() {
 				continue;
 			// get the respective LiveInterval
 			LiveInterval *VirtReg2 = &LIS->getInterval(Reg2);
-			if (VirtReg2 == VirtReg2 && VirtReg1->overlaps(*VirtReg2)) {
+			if (Reg1 != Reg2 && VirtReg1->overlaps(*VirtReg2)) {
 				interferenceGraph[VirtReg1].insert(VirtReg2);
 				interferenceGraph[VirtReg2].insert(VirtReg1);
 			}
@@ -366,6 +378,10 @@ void RAUSCC::simplifyGraph() {
 		for (const auto &pair : interferenceGraph) {
             if (pair.second.size() < NUM_COLORS) {
                 trivialNode = pair.first;
+				std::cout << "Found neighbors=" << pair.second.size() << " for "; 
+				std::cout.flush(); 
+				trivialNode->dump();
+				break;
             }
         }
 
@@ -374,29 +390,52 @@ void RAUSCC::simplifyGraph() {
             stack.push(trivialNode);
 
             // Remove this node from the graph
-            for (LiveInterval *neighbor : interferenceGraph[trivialNode]) {
-                interferenceGraph[neighbor].erase(trivialNode);
-            }
+            std::unordered_set<LiveInterval *> neighbors = interferenceGraph[trivialNode];
+
+			// Update each neighbor safely
+			for (LiveInterval *neighbor : neighbors) {
+				interferenceGraph[neighbor].erase(trivialNode);
+			}
             interferenceGraph.erase(trivialNode);
+			std::cout << "Removal: "; 
+			std::cout.flush(); 
+			trivialNode->dump();
         } else {
             // No simplifiable nodes found; move to spill phase
             LiveInterval *spillNode = nullptr;
 			unsigned minRegNum = UINT_MAX;
+			float minWeight = std::numeric_limits<float>::max();;
 			for(const auto &pair : interferenceGraph) {
-				if (pair.first->reg < minRegNum) {
+				if (pair.first->weight < minWeight) {
+					minWeight = pair.first->weight;
+					minRegNum = pair.first->reg;
+					spillNode = pair.first;
+				} else if (pair.first->weight == minWeight && pair.first->reg < minRegNum) {
+					minRegNum = pair.first->weight;
 					minRegNum = pair.first->reg;
 					spillNode = pair.first;
 				}
 			}
 
+			std::cout << "Spill candidate (neighbors=" << interferenceGraph[spillNode].size() 
+				<< ", weight=" << spillNode->weight << "): "; 
+			std::cout.flush(); 
+			spillNode->dump();
+
             // Push the spill candidate onto the stack (marked for spilling later)
             stack.push(spillNode);
 
             // Remove the spill candidate from the graph
-            for (LiveInterval *neighbor : interferenceGraph[spillNode]) {
-                interferenceGraph[neighbor].erase(spillNode);
-            }
+            std::unordered_set<LiveInterval *> neighbors = interferenceGraph[spillNode];
+
+			// Update each neighbor safely
+			for (LiveInterval *neighbor : neighbors) {
+				interferenceGraph[neighbor].erase(spillNode);
+			}
             interferenceGraph.erase(spillNode);
+			std::cout << "Removal: "; 
+			std::cout.flush(); 
+			spillNode->dump();
         }
     }
 }
