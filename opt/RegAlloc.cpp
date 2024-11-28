@@ -335,6 +335,7 @@ bool RAUSCC::runOnMachineFunction(MachineFunction &mf) {
 // Build an interference graph
 void RAUSCC::initGraph() {
 	// PA7: Implement
+	//Create a node for each virtual register
 	for (unsigned i = 0, e = MRI->getNumVirtRegs(); i != e; ++i) {
 		// reg ID
 		unsigned Reg = TargetRegisterInfo::index2VirtReg(i);
@@ -345,6 +346,8 @@ void RAUSCC::initGraph() {
 		LiveInterval *VirtReg = &LIS->getInterval(Reg);
 		interferenceGraph[VirtReg] = std::unordered_set<LiveInterval *>();
 	}
+
+	// Iterate over all pairs of virtual registers
 	for (unsigned i = 0, e = MRI->getNumVirtRegs(); i != e; ++i) {
 		// reg ID
 		unsigned Reg1 = TargetRegisterInfo::index2VirtReg(i);
@@ -360,6 +363,8 @@ void RAUSCC::initGraph() {
 				continue;
 			// get the respective LiveInterval
 			LiveInterval *VirtReg2 = &LIS->getInterval(Reg2);
+
+			// If the two virtual registers overlap, add an edge
 			if (Reg1 != Reg2 && VirtReg1->overlaps(*VirtReg2)) {
 				interferenceGraph[VirtReg1].insert(VirtReg2);
 				interferenceGraph[VirtReg2].insert(VirtReg1);
@@ -371,31 +376,19 @@ void RAUSCC::initGraph() {
 void RAUSCC::simplifyGraph() {
 	// PA7: Implement
 
-    // Simplify phase: Remove nodes iteratively and push them onto the stack
     while (!interferenceGraph.empty()) {
+		//Try to find a trivially removable node
         LiveInterval *trivialNode = nullptr;
 
 		unsigned minRegNum = UINT_MAX;
 		float minWeight = std::numeric_limits<float>::max();
 		for (const auto &pair : interferenceGraph) {
             if (pair.second.size() < NUM_COLORS) {
-				// if (pair.first->weight < minWeight) {
-				// 	trivialNode = pair.first;
-				// 	minWeight = pair.first->weight;
-				// 	minRegNum = pair.first->reg;
-				// } else if (pair.first->weight == minWeight && pair.first->reg < minRegNum) {
-				// 	trivialNode = pair.first;
-				// 	minWeight = pair.first->weight;
-				// 	minRegNum = pair.first->reg;
-				// }
 				if (pair.first->reg < minRegNum) {
 					trivialNode = pair.first;
 					minWeight = pair.first->weight;
 					minRegNum = pair.first->reg;
-				}
-				// trivialNode = pair.first;
-				// break;
-                
+				}      
 			}
         }
 
@@ -403,13 +396,11 @@ void RAUSCC::simplifyGraph() {
 			std::cout << "Found neighbors=" << interferenceGraph[trivialNode].size() << " for "; 
 			std::cout.flush(); 
 			trivialNode->dump();
-            // Push the simplifiable node onto the stack
+            // Push the trivially removable node onto the stack
             stack.push(trivialNode);
 
             // Remove this node from the graph
             std::unordered_set<LiveInterval *> neighbors = interferenceGraph[trivialNode];
-
-			// Update each neighbor safely
 			for (LiveInterval *neighbor : neighbors) {
 				interferenceGraph[neighbor].erase(trivialNode);
 			}
@@ -418,10 +409,12 @@ void RAUSCC::simplifyGraph() {
 			std::cout.flush(); 
 			trivialNode->dump();
         } else {
-            // No simplifiable nodes found; move to spill phase
+            // No trivially removable node nodes found; try to find a spill candidate
             LiveInterval *spillNode = nullptr;
+			
 			minRegNum = UINT_MAX;
-			minWeight = std::numeric_limits<float>::max();;
+			minWeight = std::numeric_limits<float>::max();
+			// Find the node with minimum (weight, regNum)
 			for(const auto &pair : interferenceGraph) {
 				if (pair.first->weight < minWeight) {
 					minWeight = pair.first->weight;
@@ -444,11 +437,10 @@ void RAUSCC::simplifyGraph() {
 
             // Remove the spill candidate from the graph
             std::unordered_set<LiveInterval *> neighbors = interferenceGraph[spillNode];
-
-			// Update each neighbor safely
 			for (LiveInterval *neighbor : neighbors) {
 				interferenceGraph[neighbor].erase(spillNode);
 			}
+
             interferenceGraph.erase(spillNode);
 			std::cout << "Removal: "; 
 			std::cout.flush(); 
