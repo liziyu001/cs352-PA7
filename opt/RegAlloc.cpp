@@ -53,6 +53,7 @@
 #include <unordered_set>
 #include <iostream>
 #include <algorithm>
+#include <stack>
 
 using namespace llvm;
 
@@ -82,7 +83,9 @@ namespace {
 		MachineFunction *MF;
 		
 		// PA7: Add any member variables needed
-		
+		std::unordered_map<LiveInterval *, std::unordered_set<LiveInterval *>> interferenceGraph;
+		std::stack<LiveInterval *> stack;
+
 		// state
 		std::unique_ptr<Spiller> SpillerInstance;
 		std::priority_queue<LiveInterval*, std::vector<LiveInterval*>,
@@ -140,7 +143,7 @@ namespace {
 	
 } // end anonymous namespace
 
-RAUSCC::RAUSCC(): MachineFunctionPass(ID) {
+RAUSCC::RAUSCC(): MachineFunctionPass(ID), interferenceGraph(), stack() {
 	initializeLiveDebugVariablesPass(*PassRegistry::getPassRegistry());
 	initializeLiveIntervalsPass(*PassRegistry::getPassRegistry());
 	initializeSlotIndexesPass(*PassRegistry::getPassRegistry());
@@ -181,6 +184,10 @@ void RAUSCC::releaseMemory() {
 	SpillerInstance.reset();
 	
 	// PA7: Delete any member data stored for each function
+	interferenceGraph.clear();
+	while (!stack.empty()) {
+		stack.pop();
+	}
 }
 
 
@@ -326,10 +333,72 @@ bool RAUSCC::runOnMachineFunction(MachineFunction &mf) {
 // Build an interference graph
 void RAUSCC::initGraph() {
 	// PA7: Implement
+	for (unsigned i = 0, e = MRI->getNumVirtRegs(); i != e; ++i) {
+		// reg ID
+		unsigned Reg1 = TargetRegisterInfo::index2VirtReg(i);
+		// if is not a DEBUG register
+		if (MRI->reg_nodbg_empty(Reg1))
+			continue;
+		// get the respective LiveInterval
+		LiveInterval *VirtReg1 = &LIS->getInterval(Reg1);
+		for (unsigned j = 0; j != e; ++j) {
+			unsigned Reg2 = TargetRegisterInfo::index2VirtReg(j);
+			// if is not a DEBUG register
+			if (MRI->reg_nodbg_empty(Reg2))
+				continue;
+			// get the respective LiveInterval
+			LiveInterval *VirtReg2 = &LIS->getInterval(Reg2);
+			if (VirtReg2 == VirtReg2 && VirtReg1->overlaps(*VirtReg2)) {
+				interferenceGraph[VirtReg1].insert(VirtReg2);
+				interferenceGraph[VirtReg2].insert(VirtReg1);
+			}
+		}
+	}
 }
 
 void RAUSCC::simplifyGraph() {
 	// PA7: Implement
+
+    // Simplify phase: Remove nodes iteratively and push them onto the stack
+    while (!interferenceGraph.empty()) {
+        LiveInterval *trivialNode = nullptr;
+
+		for (const auto &pair : interferenceGraph) {
+            if (pair.second.size() < NUM_COLORS) {
+                trivialNode = pair.first;
+            }
+        }
+
+        if (trivialNode) {
+            // Push the simplifiable node onto the stack
+            stack.push(trivialNode);
+
+            // Remove this node from the graph
+            for (LiveInterval *neighbor : interferenceGraph[trivialNode]) {
+                interferenceGraph[neighbor].erase(trivialNode);
+            }
+            interferenceGraph.erase(trivialNode);
+        } else {
+            // No simplifiable nodes found; move to spill phase
+            LiveInterval *spillNode = nullptr;
+			unsigned minRegNum = UINT_MAX;
+			for(const auto &pair : interferenceGraph) {
+				if (pair.first->reg < minRegNum) {
+					minRegNum = pair.first->reg;
+					spillNode = pair.first;
+				}
+			}
+
+            // Push the spill candidate onto the stack (marked for spilling later)
+            stack.push(spillNode);
+
+            // Remove the spill candidate from the graph
+            for (LiveInterval *neighbor : interferenceGraph[spillNode]) {
+                interferenceGraph[neighbor].erase(spillNode);
+            }
+            interferenceGraph.erase(spillNode);
+        }
+    }
 }
 
 FunctionPass* createUSCCRegisterAllocator() {
