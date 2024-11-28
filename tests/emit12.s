@@ -70,12 +70,12 @@ main:                                   # @main
 	callq	printf
 .LBB0_5:                                # %if.end11
                                         #   in Loop: Header=BB0_1 Depth=1
-	imulq	$1717986919, %r14, %rcx # imm = 0x66666667
-	movq	%rcx, %rax
-	shrq	$63, %rax
-	sarq	$33, %rcx
-	addl	%eax, %ecx
-	leal	(%rcx,%rcx,4), %eax
+	imulq	$1717986919, %r14, %rax # imm = 0x66666667
+	movq	%rax, %rcx
+	shrq	$63, %rcx
+	sarq	$33, %rax
+	addl	%ecx, %eax
+	leal	(%rax,%rax,4), %eax
 	cmpl	%eax, %ebx
 	je	.LBB0_6
 	jmp	.LBB0_13

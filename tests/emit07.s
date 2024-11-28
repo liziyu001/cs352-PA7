@@ -23,35 +23,35 @@ main:                                   # @main
 	xorl	%esi, %esi
 	xorl	%eax, %eax
 	callq	printf
-	movl	$5, %ebx
+	movl	$5, %ebp
 	jmp	.LBB0_1
 	.align	16, 0x90
 .LBB0_2:                                # %while.body
                                         #   in Loop: Header=BB0_1 Depth=1
 	movl	$.L.str, %edi
 	xorl	%eax, %eax
-	movl	%ebx, %esi
+	movl	%ebp, %esi
 	callq	printf
-	decl	%ebx
-	movl	$8, %ebp
+	decl	%ebp
+	movl	$8, %ebx
 	jmp	.LBB0_3
 	.align	16, 0x90
 .LBB0_4:                                # %while.body3
                                         #   in Loop: Header=BB0_3 Depth=2
 	movl	$.L.str, %edi
 	xorl	%eax, %eax
-	movl	%ebp, %esi
+	movl	%ebx, %esi
 	callq	printf
-	incl	%ebp
+	incl	%ebx
 .LBB0_3:                                # %while.cond1
                                         #   Parent Loop BB0_1 Depth=1
                                         # =>  This Inner Loop Header: Depth=2
-	cmpl	$9, %ebp
+	cmpl	$9, %ebx
 	jle	.LBB0_4
 .LBB0_1:                                # %while.cond
                                         # =>This Loop Header: Depth=1
                                         #     Child Loop BB0_3 Depth 2
-	testl	%ebx, %ebx
+	testl	%ebp, %ebp
 	jg	.LBB0_2
 # BB#5:                                 # %while.end
 	sete	%al

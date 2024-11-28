@@ -22,21 +22,21 @@ main:                                   # @main
 	movl	$1, 8(%rsp)
 	movl	$3, 12(%rsp)
 	movl	$5, 16(%rsp)
-	movl	$11, %ebp
-	movl	12(%rsp), %ebx
-	addl	$10, %ebx
+	movl	$11, %ebx
+	movl	12(%rsp), %ebp
+	addl	$10, %ebp
 	jmp	.LBB0_1
 	.align	16, 0x90
 .LBB0_2:                                # %while.body
                                         #   in Loop: Header=BB0_1 Depth=1
 	movl	$.L.str, %edi
 	xorl	%eax, %eax
-	movl	%ebx, %esi
+	movl	%ebp, %esi
 	callq	printf
 .LBB0_1:                                # %while.cond
                                         # =>This Inner Loop Header: Depth=1
-	decl	%ebp
-	testl	%ebp, %ebp
+	decl	%ebx
+	testl	%ebx, %ebx
 	jg	.LBB0_2
 # BB#3:                                 # %while.end
 	movl	16(%rsp), %esi

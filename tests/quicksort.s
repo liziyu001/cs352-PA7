@@ -30,16 +30,16 @@ partition:                              # @partition
 	jge	.LBB0_5
 # BB#2:                                 # %while.body
                                         #   in Loop: Header=BB0_1 Depth=1
-	movslq	%esi, %rax
-	movsbl	(%rdi,%rax), %ecx
-	cmpl	%r10d, %ecx
+	movslq	%esi, %rdx
+	movsbl	(%rdi,%rdx), %eax
+	cmpl	%r10d, %eax
 	jge	.LBB0_4
 # BB#3:                                 # %if.then
                                         #   in Loop: Header=BB0_1 Depth=1
-	movb	(%rdi,%rax), %r8b
+	movb	(%rdi,%rdx), %r8b
 	movslq	%r9d, %rcx
-	movb	(%rdi,%rcx), %dl
-	movb	%dl, (%rdi,%rax)
+	movb	(%rdi,%rcx), %al
+	movb	%al, (%rdi,%rdx)
 	movb	%r8b, (%rdi,%rcx)
 	incl	%r9d
 	jmp	.LBB0_4
@@ -85,31 +85,31 @@ quicksort:                              # @quicksort
 	.cfi_offset %r15, -24
 .Ltmp11:
 	.cfi_offset %rbp, -16
-	movl	%edx, %ebp
-	movl	%esi, %ebx
+	movl	%edx, %ebx
+	movl	%esi, %ebp
 	movq	%rdi, %r14
-	cmpl	%ebp, %ebx
+	cmpl	%ebx, %ebp
 	jge	.LBB1_2
 # BB#1:                                 # %if.then
-	movl	%ebp, %eax
-	subl	%ebx, %eax
+	movl	%ebx, %eax
+	subl	%ebp, %eax
 	movl	%eax, %ecx
 	shrl	$31, %ecx
 	addl	%eax, %ecx
 	sarl	%ecx
-	addl	%ebx, %ecx
+	addl	%ebp, %ecx
 	movq	%r14, %rdi
-	movl	%ebx, %esi
-	movl	%ebp, %edx
+	movl	%ebp, %esi
+	movl	%ebx, %edx
 	callq	partition
 	movl	%eax, %r15d
 	leal	-1(%r15), %edx
 	movq	%r14, %rdi
-	movl	%ebx, %esi
+	movl	%ebp, %esi
 	callq	quicksort
 	leal	1(%r15), %esi
 	movq	%r14, %rdi
-	movl	%ebp, %edx
+	movl	%ebx, %edx
 	callq	quicksort
 .LBB1_2:                                # %if.end
 	addq	$8, %rsp

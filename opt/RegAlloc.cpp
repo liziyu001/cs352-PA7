@@ -375,17 +375,34 @@ void RAUSCC::simplifyGraph() {
     while (!interferenceGraph.empty()) {
         LiveInterval *trivialNode = nullptr;
 
+		unsigned minRegNum = UINT_MAX;
+		float minWeight = std::numeric_limits<float>::max();
 		for (const auto &pair : interferenceGraph) {
             if (pair.second.size() < NUM_COLORS) {
-                trivialNode = pair.first;
-				std::cout << "Found neighbors=" << pair.second.size() << " for "; 
-				std::cout.flush(); 
-				trivialNode->dump();
-				break;
-            }
+				// if (pair.first->weight < minWeight) {
+				// 	trivialNode = pair.first;
+				// 	minWeight = pair.first->weight;
+				// 	minRegNum = pair.first->reg;
+				// } else if (pair.first->weight == minWeight && pair.first->reg < minRegNum) {
+				// 	trivialNode = pair.first;
+				// 	minWeight = pair.first->weight;
+				// 	minRegNum = pair.first->reg;
+				// }
+				if (pair.first->reg < minRegNum) {
+					trivialNode = pair.first;
+					minWeight = pair.first->weight;
+					minRegNum = pair.first->reg;
+				}
+				// trivialNode = pair.first;
+				// break;
+                
+			}
         }
 
         if (trivialNode) {
+			std::cout << "Found neighbors=" << interferenceGraph[trivialNode].size() << " for "; 
+			std::cout.flush(); 
+			trivialNode->dump();
             // Push the simplifiable node onto the stack
             stack.push(trivialNode);
 
@@ -403,8 +420,8 @@ void RAUSCC::simplifyGraph() {
         } else {
             // No simplifiable nodes found; move to spill phase
             LiveInterval *spillNode = nullptr;
-			unsigned minRegNum = UINT_MAX;
-			float minWeight = std::numeric_limits<float>::max();;
+			minRegNum = UINT_MAX;
+			minWeight = std::numeric_limits<float>::max();;
 			for(const auto &pair : interferenceGraph) {
 				if (pair.first->weight < minWeight) {
 					minWeight = pair.first->weight;

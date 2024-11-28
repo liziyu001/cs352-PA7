@@ -29,8 +29,8 @@ main:                                   # @main
 	.cfi_offset %r15, -24
 .Ltmp8:
 	.cfi_offset %rbp, -16
-	movl	$5, %r14d
-	movl	$1, %ebp
+	movl	$5, %ebx
+	movl	$1, %r14d
 	jmp	.LBB0_1
 	.align	16, 0x90
 .LBB0_6:                                # %if.else
@@ -38,16 +38,16 @@ main:                                   # @main
 	movl	$.L.str, %edi
 	xorl	%eax, %eax
 	callq	printf
-	movl	%r15d, %ebp
-	movl	%ebx, %r14d
+	movl	%r15d, %r14d
+	movl	%ebp, %ebx
 .LBB0_1:                                # %while.cond
                                         # =>This Inner Loop Header: Depth=1
-	movl	%ebp, %r15d
+	movl	%r14d, %r15d
 	testl	%r15d, %r15d
 	je	.LBB0_2
 # BB#3:                                 # %and.rhs
                                         #   in Loop: Header=BB0_1 Depth=1
-	testl	%r14d, %r14d
+	testl	%ebx, %ebx
 	setne	%al
 	jmp	.LBB0_4
 	.align	16, 0x90
@@ -59,14 +59,14 @@ main:                                   # @main
 	je	.LBB0_7
 # BB#5:                                 # %while.body
                                         #   in Loop: Header=BB0_1 Depth=1
-	xorl	%ebp, %ebp
+	xorl	%r14d, %r14d
 	movl	$.L.str1, %edi
 	xorl	%eax, %eax
-	movl	%r14d, %esi
+	movl	%ebx, %esi
 	callq	printf
-	leal	-1(%r14), %ebx
-	cmpl	$2, %r14d
-	movl	%ebx, %r14d
+	leal	-1(%rbx), %ebp
+	cmpl	$2, %ebx
+	movl	%ebp, %ebx
 	je	.LBB0_1
 	jmp	.LBB0_6
 .LBB0_7:                                # %while.end
